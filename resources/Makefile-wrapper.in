@@ -1,9 +1,14 @@
+export RUSTC_WRAPPER := $(CURDIR)/helper/wrapper
+
+helper/wrapper: helper/wrapper.rs
+	rustc --crate-name wrapper --crate-type bin -C opt-level=2 -C strip=symbols --edition=2021 -o $@ $<
+
 .PHONY: prepare build-contract test clippy check-lint lint clean
 
 prepare:
 	cd contract && rustup target add wasm32-unknown-unknown
 
-build-contract:
+build-contract: helper/wrapper
 	cd contract && cargo build --release --target wasm32-unknown-unknown
 	wasm-strip contract/target/wasm32-unknown-unknown/release/contract.wasm 2>/dev/null | true
 

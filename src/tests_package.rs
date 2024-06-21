@@ -22,10 +22,10 @@ static INTEGRATION_TESTS_RS: Lazy<PathBuf> =
 pub static TEST_DEPENDENCIES: Lazy<String> = Lazy::new(|| {
     format!(
         "{}{}{}{}",
-        CL_CONTRACT.display_with_features(false, vec!["test-support"]),
-        CL_ENGINE_TEST_SUPPORT.display_with_features(true, vec!["test-support"]),
-        CL_EXECUTION_ENGINE.display_with_features(true, vec![]),
-        CL_TYPES.display_with_features(true, vec![])
+        CL_CONTRACT.display_with_features(false, &["test-support"]),
+        CL_ENGINE_TEST_SUPPORT.display_with_features(true, &["test-support"]),
+        CL_EXECUTION_ENGINE.display_with_features(true, &[]),
+        CL_TYPES.display_with_features(true, &[])
     )
 });
 

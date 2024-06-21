@@ -24,10 +24,10 @@ fn should_fail_when_target_path_already_exists() {
     let exit_code = output_error.as_output().unwrap().status.code().unwrap();
     assert_eq!(FAILURE_EXIT_CODE, exit_code);
 
-    let stderr: String = String::from_utf8_lossy(&output_error.as_output().unwrap().stderr).into();
+    let stderr = String::from_utf8_lossy(&output_error.as_output().unwrap().stderr);
     let expected_msg_fragment = format!(": destination '{}' already exists", test_dir.display());
-    assert!(stderr.contains(&expected_msg_fragment));
-    assert!(stderr.contains("error"));
+    assert!(stderr.contains(&expected_msg_fragment), "{}", stderr);
+    assert!(stderr.contains("error"), "{}", stderr);
 
     fs::remove_dir_all(&test_dir).unwrap();
 }
@@ -122,23 +122,22 @@ fn should_run_cargo_casper_using_published_crates() {
         Some(branch_name) if branch_name.starts_with("release-") => (),
         Some(branch_name) => {
             println!(
-                "skipping 'should_run_cargo_casper_using_published_crates' as branch name '{}' \
-                doesn't start with 'release-'",
-                branch_name
+                "skipping 'should_run_cargo_casper_using_published_crates' as branch name \
+                '{branch_name}' doesn't start with 'release-'",
             );
             return;
         }
         None => {
             println!(
-                "skipping 'should_run_cargo_casper_using_published_crates' as {} and {} are unset \
-                or set to empty strings",
-                PR_TARGET_BRANCH_NAME_ENV_VAR, CI_BRANCH_NAME_ENV_VAR
+                "skipping 'should_run_cargo_casper_using_published_crates' as \
+                {PR_TARGET_BRANCH_NAME_ENV_VAR} and {CI_BRANCH_NAME_ENV_VAR} are unset or set to \
+                empty strings",
             );
             return;
         }
     }
 
-    run_make_test_on_generated_project(None)
+    run_make_test_on_generated_project(None);
 }
 
 /// Checks that running `cargo-casper` with Git overrides yields a generated project which passes
@@ -163,9 +162,9 @@ fn should_run_cargo_casper_using_git_overrides() {
         let branch_selector = env::var(CRON_JOB_BRANCH_NAME_ENV_VAR);
         let pr_target_branch = env::var(PR_TARGET_BRANCH_NAME_ENV_VAR);
         let ci_branch = env::var(CI_BRANCH_NAME_ENV_VAR);
-        println!("{}: {:?}", CRON_JOB_BRANCH_NAME_ENV_VAR, branch_selector);
-        println!("{}: {:?}", PR_TARGET_BRANCH_NAME_ENV_VAR, pr_target_branch);
-        println!("{}: {:?}", CI_BRANCH_NAME_ENV_VAR, ci_branch);
+        println!("{CRON_JOB_BRANCH_NAME_ENV_VAR}: {branch_selector:?}");
+        println!("{PR_TARGET_BRANCH_NAME_ENV_VAR}: {pr_target_branch:?}");
+        println!("{CI_BRANCH_NAME_ENV_VAR}: {ci_branch:?}");
     }
 
     let git_branch_arg = match ci_branch_name() {
@@ -176,16 +175,16 @@ fn should_run_cargo_casper_using_git_overrides() {
             );
             return;
         }
-        Some(branch_name) => format!("--git-branch={}", branch_name),
+        Some(branch_name) => format!("--git-branch={branch_name}"),
         None => {
             println!(
-                "skipping 'should_run_cargo_casper_using_git_overrides' as {} and {} are unset or \
-                set to empty strings",
-                PR_TARGET_BRANCH_NAME_ENV_VAR, CI_BRANCH_NAME_ENV_VAR
+                "skipping 'should_run_cargo_casper_using_git_overrides' as \
+                {PR_TARGET_BRANCH_NAME_ENV_VAR} and {CI_BRANCH_NAME_ENV_VAR} are unset or set to \
+                empty strings",
             );
             return;
         }
     };
 
-    run_make_test_on_generated_project(Some(git_branch_arg))
+    run_make_test_on_generated_project(Some(git_branch_arg));
 }

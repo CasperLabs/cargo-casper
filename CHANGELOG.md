@@ -10,6 +10,12 @@ All notable changes to this project will be documented in this file.  The format
 [comment]: <> (Security:   in case of vulnerabilities)
 
 
+## [2.2.1] - 2024-06-21
+
+### Added
+* `--wrapper` option for using `rustc` wrapper to build reproducible wasm.
+
+
 
 ## [2.2.0] - 2024-02-09
 
