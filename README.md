@@ -75,6 +75,15 @@ and run the test:
 make test
 ```
 
+### Reproducibility
+
+Currently, [cargo](https://github.com/rust-lang/cargo/issues/8140) does not provide cross-platform reproducibility for binary files, including WebAssembly. To work around the issue, we provide `rustc` wrapper, which can be enabled using `--wrapper` option.
+
+```
+cargo casper my_project --wrapper
+```
+
+
 ## License
 
 Licensed under the [Apache License Version 2.0](LICENSE).

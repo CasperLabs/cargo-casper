@@ -21,8 +21,8 @@ static RUST_TOOLCHAIN: Lazy<PathBuf> = Lazy::new(|| CONTRACT_PACKAGE_ROOT.join("
 static CONTRACT_DEPENDENCIES: Lazy<String> = Lazy::new(|| {
     format!(
         "{}{}",
-        CL_CONTRACT.display_with_features(true, vec![]),
-        CL_TYPES.display_with_features(true, vec![]),
+        CL_CONTRACT.display_with_features(true, &[]),
+        CL_TYPES.display_with_features(true, &[]),
     )
 });
 
@@ -33,7 +33,7 @@ target = "wasm32-unknown-unknown"
 static CARGO_TOML_CONTENTS: Lazy<String> = Lazy::new(|| {
     format!(
         r#"[package]
-name = "{}"
+name = "{PACKAGE_NAME}"
 version = "0.1.0"
 edition = "2021"
 
@@ -51,7 +51,6 @@ codegen-units = 1
 lto = true
 
 {}"#,
-        PACKAGE_NAME,
         &*CONTRACT_DEPENDENCIES,
         PACKAGE_NAME.replace('-', "_"),
         &*PATCH_SECTION
@@ -114,11 +113,9 @@ mod tests {
         {
         } else {
             println!(
-                "skipping 'check_toolchain_version_on_dev' as none of {}, {} and {} are set to {}",
-                CRON_JOB_BRANCH_NAME_ENV_VAR,
-                PR_TARGET_BRANCH_NAME_ENV_VAR,
-                CI_BRANCH_NAME_ENV_VAR,
-                TEST_BRANCH_NAME,
+                "skipping 'check_toolchain_version_on_dev' as none of \
+                {CRON_JOB_BRANCH_NAME_ENV_VAR}, {PR_TARGET_BRANCH_NAME_ENV_VAR} and \
+                {CI_BRANCH_NAME_ENV_VAR} are set to {TEST_BRANCH_NAME}",
             );
             return;
         }

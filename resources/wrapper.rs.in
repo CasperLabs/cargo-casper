@@ -1,0 +1,77 @@
+use std::{
+    env,
+    io::{stderr, stdout, Write},
+    process::Command,
+};
+
+/// Change `metadata=...` argument to `metadata=file` if file is `Some`.
+/// Otherwise output plain `metadata=`. Other arguments are not modified.
+fn map_args<'a, I>(file: Option<&'a str>, args: I) -> impl Iterator<Item = String> + 'a
+where
+    I: Iterator<Item = String> + 'a,
+{
+    args.map(move |arg| {
+        let metadata = "metadata=";
+        if arg.starts_with(metadata) {
+            let mut out = metadata.to_string();
+            if let Some(path) = file {
+                out += path;
+            }
+            out
+        } else {
+            arg
+        }
+    })
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cargo_home = env::var("CARGO_HOME").expect("env variable `CARGO_HOME` must be set");
+    if !cargo_home.ends_with('/') {
+        cargo_home.push('/');
+    }
+
+    // Skip first two arguments, which is this wrapper and command name.
+    let file = env::args()
+        .skip(2)
+        .find_map(move |arg| arg.strip_prefix(&cargo_home).map(ToString::to_string));
+
+    // Skip first argument, which is this wrapper.
+    let mut args = env::args().skip(1);
+    let mut command = Command::new(args.next().unwrap());
+    command.args(map_args(
+        file.as_ref().map(|x| x.as_str()),
+        args.into_iter(),
+    ));
+    let output = command.output()?;
+    stdout().write_all(&output.stdout)?;
+    stderr().write_all(&output.stderr)?;
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::map_args;
+
+    #[test]
+    fn map_rustc_args() {
+        let args = [
+            "rustc",
+            "--crate-name",
+            "counter_v2",
+            "src/main.rs",
+            "-C",
+            "metadata=aee64bf716df0053",
+            "-C",
+            "extra-filename=-aee64bf716df0053",
+        ];
+        let new_args = map_args(
+            Some("src/main.rs"),
+            args.into_iter().map(ToString::to_string),
+        );
+        assert_eq!(
+            new_args.skip(5).next(),
+            Some("metadata=src/main.rs".to_string())
+        );
+    }
+}

@@ -1,39 +1,41 @@
 //! Command line tool for creating a Wasm contract and tests for use on the Casper Platform.
 
-#![deny(warnings)]
+// #![deny(warnings)]
 
-pub mod common;
+mod common;
 mod contract_package;
-pub mod dependency;
+mod dependency;
 mod makefile;
 mod tests_package;
 mod travis_yml;
+mod wrapper;
 
 use std::{
     env,
     path::{Path, PathBuf},
 };
 
-use clap::{builder::ValueParser, crate_description, crate_name, crate_version, Arg, Command};
+use clap::{
+    builder::ValueParser, crate_description, crate_name, crate_version, Arg, ArgAction, Command,
+};
 use once_cell::sync::Lazy;
 
-const USAGE: &str = r#"cargo casper [FLAGS] <path>
+const USAGE: &str = r"cargo casper [FLAGS] <path>
     cd <path>
     make prepare
-    make test"#;
+    make test";
 
 const ROOT_PATH_ARG_NAME: &str = "path";
-const ROOT_PATH_ARG_VALUE_NAME: &str = "path";
 const ROOT_PATH_ARG_HELP: &str = "Path to new folder for contract and tests";
 
 const WORKSPACE_PATH_ARG_NAME: &str = "workspace-path";
-const WORKSPACE_PATH_ARG_LONG: &str = "workspace-path";
 
 const GIT_URL_ARG_NAME: &str = "git-url";
-const GIT_URL_LONG: &str = "git-url";
 
 const GIT_BRANCH_ARG_NAME: &str = "git-branch";
-const GIT_BRANCH_LONG: &str = "git-branch";
+
+const WRAPPER_ARG_NAME: &str = "wrapper";
+const WRAPPER_ARG_HELP: &str = "Use rustc wrapper to ensure wasm reproducibility";
 
 const FAILURE_EXIT_CODE: i32 = 101;
 
@@ -53,6 +55,7 @@ enum CasperOverrides {
 struct Args {
     root_path: PathBuf,
     casper_overrides: Option<CasperOverrides>,
+    use_wrapper: bool,
 }
 
 impl Args {
@@ -67,7 +70,7 @@ impl Args {
         // invalid call (the user entered 'cargo casper' with no target dir specified).  The latter
         // case is assumed as being more likely.
         let filtered_args_iter = env::args().enumerate().filter_map(|(index, value)| {
-            if index == 1 && value.as_str() == "casper" {
+            if index == 1 && value == "casper" {
                 None
             } else {
                 Some(value)
@@ -77,21 +80,27 @@ impl Args {
         let root_path_arg = Arg::new(ROOT_PATH_ARG_NAME)
             .value_parser(ValueParser::path_buf())
             .required(true)
-            .value_name(ROOT_PATH_ARG_VALUE_NAME)
+            .value_name(ROOT_PATH_ARG_NAME)
             .help(ROOT_PATH_ARG_HELP);
 
+        let use_wrapper_arg = Arg::new(WRAPPER_ARG_NAME)
+            .long(WRAPPER_ARG_NAME)
+            .short('w')
+            .help(WRAPPER_ARG_HELP)
+            .action(ArgAction::SetTrue);
+
         let workspace_path_arg = Arg::new(WORKSPACE_PATH_ARG_NAME)
-            .long(WORKSPACE_PATH_ARG_LONG)
+            .long(WORKSPACE_PATH_ARG_NAME)
             .hide(true);
 
         let git_url_arg = Arg::new(GIT_URL_ARG_NAME)
-            .long(GIT_URL_LONG)
+            .long(GIT_URL_ARG_NAME)
             .hide(true)
             .conflicts_with(WORKSPACE_PATH_ARG_NAME)
             .requires(GIT_BRANCH_ARG_NAME);
 
         let git_branch_arg = Arg::new(GIT_BRANCH_ARG_NAME)
-            .long(GIT_BRANCH_LONG)
+            .long(GIT_BRANCH_ARG_NAME)
             .hide(true)
             .conflicts_with(WORKSPACE_PATH_ARG_NAME)
             .requires(GIT_URL_ARG_NAME);
@@ -101,6 +110,7 @@ impl Args {
             .about(crate_description!())
             .override_usage(USAGE)
             .arg(root_path_arg)
+            .arg(use_wrapper_arg)
             .arg(workspace_path_arg)
             .arg(git_url_arg)
             .arg(git_branch_arg)
@@ -110,7 +120,7 @@ impl Args {
             .get_one::<PathBuf>(ROOT_PATH_ARG_NAME)
             .expect("expected path")
             .clone();
-
+        let use_wrapper = arg_matches.get_flag(WRAPPER_ARG_NAME);
         let maybe_workspace_path = arg_matches.get_one::<String>(WORKSPACE_PATH_ARG_NAME);
         let maybe_git_url = arg_matches.get_one::<String>(GIT_URL_ARG_NAME);
         let maybe_git_branch = arg_matches.get_one::<String>(GIT_BRANCH_ARG_NAME);
@@ -128,6 +138,7 @@ impl Args {
         Args {
             root_path,
             casper_overrides,
+            use_wrapper,
         }
     }
 
@@ -141,16 +152,19 @@ impl Args {
 }
 
 fn main() {
-    if ARGS.root_path().exists() {
+    if ARGS.root_path.exists() {
         common::print_error_and_exit(&format!(
             ": destination '{}' already exists",
-            ARGS.root_path().display()
+            ARGS.root_path.display()
         ));
     }
 
-    common::create_dir_all(ARGS.root_path());
+    common::create_dir_all(&ARGS.root_path);
     contract_package::create();
     tests_package::create();
-    makefile::create();
+    makefile::create(ARGS.use_wrapper);
     travis_yml::create();
+    if ARGS.use_wrapper {
+        wrapper::create();
+    }
 }

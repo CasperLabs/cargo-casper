@@ -27,12 +27,11 @@ casper-types = {{ path = "{0}/types" }}
     Some(CasperOverrides::GitRepo { url, branch }) => {
         format!(
             r#"[patch.crates-io]
-casper-contract = {{ git = "{0}", branch = "{1}" }}
-casper-engine-test-support = {{ git = "{0}", branch = "{1}" }}
-casper-execution-engine = {{ git = "{0}", branch = "{1}" }}
-casper-types = {{ git = "{0}", branch = "{1}" }}
+casper-contract = {{ git = "{url}", branch = "{branch}" }}
+casper-engine-test-support = {{ git = "{url}", branch = "{branch}" }}
+casper-execution-engine = {{ git = "{url}", branch = "{branch}" }}
+casper-types = {{ git = "{url}", branch = "{branch}" }}
 "#,
-            url, branch
         )
     }
     None => String::new(),
@@ -40,16 +39,15 @@ casper-types = {{ git = "{0}", branch = "{1}" }}
 
 pub fn print_error_and_exit(msg: &str) -> ! {
     e_red!("error");
-    eprintln!("{}", msg);
+    eprintln!("{msg}");
     process::exit(FAILURE_EXIT_CODE)
 }
 
 pub fn create_dir_all<P: AsRef<Path>>(path: P) {
     if let Err(error) = fs::create_dir_all(path.as_ref()) {
         print_error_and_exit(&format!(
-            ": failed to create '{}': {}",
+            ": failed to create '{}': {error}",
             path.as_ref().display(),
-            error
         ));
     }
 }
@@ -57,17 +55,14 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) {
 pub fn write_file<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) {
     if let Err(error) = fs::write(path.as_ref(), contents) {
         print_error_and_exit(&format!(
-            ": failed to write to '{}': {}",
+            ": failed to write to '{}': {error}",
             path.as_ref().display(),
-            error
         ));
     }
 }
 
 #[cfg(test)]
 pub mod tests {
-    use std::ops::Deref;
-
     use reqwest::blocking;
     use serde_json::Value;
 
@@ -92,15 +87,12 @@ pub mod tests {
         let crate_io_index_contents = blocking::get(url)
             .unwrap_or_else(|error| {
                 panic!(
-                    "should get index file for {} from GitHub: {}",
+                    "should get index file for {} from GitHub: {error}",
                     dep.name(),
-                    error
                 )
             })
             .text()
-            .unwrap_or_else(|error| {
-                panic!("should parse index file for {}: {}", dep.name(), error)
-            });
+            .unwrap_or_else(|error| panic!("should parse index file for {}: {error}", dep.name()));
 
         let latest_entry: Value = serde_json::from_str(
             crate_io_index_contents
@@ -116,32 +108,30 @@ pub mod tests {
         assert_eq!(
             latest_publish_version,
             dep.version(),
-            "\n\nEnsure local version of {:?} in common.rs is updated to {} as defined in last \
-            version of {}{}\n\n",
-            dep,
-            latest_publish_version,
-            CRATES_IO_INDEX_URL_FOR_CASPER_CRATES,
+            "\n\nEnsure local version of {dep:?} in common.rs is updated to \
+            {latest_publish_version} as defined in last version of \
+            {CRATES_IO_INDEX_URL_FOR_CASPER_CRATES}{}\n\n",
             dep.name()
         );
     }
 
     #[test]
     fn check_cl_contract_version() {
-        check_latest_published_casper_package_version(CL_CONTRACT.deref());
+        check_latest_published_casper_package_version(&CL_CONTRACT);
     }
 
     #[test]
     fn check_cl_types_version() {
-        check_latest_published_casper_package_version(CL_TYPES.deref());
+        check_latest_published_casper_package_version(&CL_TYPES);
     }
 
     #[test]
     fn check_cl_engine_test_support_version() {
-        check_latest_published_casper_package_version(CL_ENGINE_TEST_SUPPORT.deref());
+        check_latest_published_casper_package_version(&CL_ENGINE_TEST_SUPPORT);
     }
 
     #[test]
     fn check_cl_execution_engine_version() {
-        check_latest_published_casper_package_version(CL_EXECUTION_ENGINE.deref());
+        check_latest_published_casper_package_version(&CL_EXECUTION_ENGINE);
     }
 }
